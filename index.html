@@ -16,6 +16,7 @@
       height: 100vh;
       overflow-x: hidden;
       overflow-y: auto;
+      position: relative;
     }
     .header {
       margin-bottom: 15px;
@@ -33,7 +34,8 @@
       gap: 12px;
       padding-bottom: 20px;
     }
-    iframe {
+    /* Style container and child elements */
+    .grid div {
       width: 100%;
       aspect-ratio: 9 / 16;
       border: 2px solid #222;
@@ -41,17 +43,38 @@
       background-color: #000;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
       transition: all 0.3s ease;
+      overflow: hidden;
     }
-    iframe:hover {
+    .grid div:hover {
       border-color: #ff3b30;
       transform: scale(1.03);
       box-shadow: 0 6px 12px rgba(255, 59, 48, 0.2);
+    }
+    /* Click to unmute overlay banner */
+    .audio-banner {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: rgba(255, 59, 48, 0.9);
+      color: #fff;
+      padding: 12px 24px;
+      font-size: 14px;
+      font-weight: bold;
+      border-radius: 30px;
+      box-shadow: 0 4px 15px rgba(255, 59, 48, 0.4);
+      z-index: 1000;
+      cursor: pointer;
+      text-align: center;
+      transition: opacity 0.5s ease;
+      pointer-events: none; /* Make body clicks pass through */
     }
     .error-msg {
       text-align: center;
       font-size: 16px;
       color: #aaa;
       margin-top: 50px;
+      grid-column: span 10;
     }
     @media (max-width: 1200px) {
       .grid {
@@ -66,36 +89,83 @@
   </style>
 </head>
 <body>
+  <div id="sound-banner" class="audio-banner">Click anywhere on page to activate audio at 1% volume</div>
   <div class="header" id="dashboard-title">Multi-Screen Monitor Grid</div>
   <div class="grid" id="video-grid"></div>
+
+  <!-- Load YouTube Player API -->
+  <script src="https://www.youtube.com/iframe_api"></script>
 
   <script>
     // Extract parameters from URL search query
     const urlParams = new URLSearchParams(window.location.search);
-    
-    // Default video ID: HZDnS7l0-dk
     const videoId = urlParams.get('v') || 'HZDnS7l0-dk';
-    
-    // Default count of screens: 50
     const count = parseInt(urlParams.get('c')) || 50;
 
     const gridContainer = document.getElementById('video-grid');
     const titleElement = document.getElementById('dashboard-title');
+    const soundBanner = document.getElementById('sound-banner');
 
     titleElement.textContent = `Multi-Screen Monitor Grid (${count} active elements)`;
 
-    if (videoId) {
-      // Set autoplay=1, mute=0 (audio on), loop=1, and playlist=videoId (required for looping)
-      const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=0&loop=1&playlist=${videoId}`;
-      
-      let html = '';
-      for (let i = 0; i < count; i++) {
-        html += `<iframe src="${embedUrl}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen frameborder="0"></iframe>\n`;
+    const players = [];
+
+    // This callback function is automatically executed by YouTube IFrame API once loaded
+    function onYouTubeIframeAPIReady() {
+      if (!videoId) {
+        gridContainer.innerHTML = '<div class="error-msg">Please specify a video ID parameter, e.g., ?v=VIDEO_ID</div>';
+        return;
       }
-      gridContainer.innerHTML = html;
-    } else {
-      gridContainer.innerHTML = '<div class="error-msg">Please specify a video ID parameter, e.g., ?v=VIDEO_ID</div>';
+
+      for (let i = 0; i < count; i++) {
+        // Create player container div
+        const playerDiv = document.createElement('div');
+        playerDiv.id = `yt-player-${i}`;
+        gridContainer.appendChild(playerDiv);
+
+        // Initialize YouTube player
+        const player = new YT.Player(`yt-player-${i}`, {
+          height: '100%',
+          width: '100%',
+          videoId: videoId,
+          playerVars: {
+            autoplay: 1,
+            mute: 1, // Must start muted to bypass browser autoplay blocks
+            loop: 1,
+            playlist: videoId, // Required for loop parameter to work on embed
+            controls: 0,       // Hide controls
+            rel: 0,
+            modestbranding: 1
+          },
+          events: {
+            onReady: (event) => {
+              event.target.playVideo();
+            }
+          }
+        });
+        players.push(player);
+      }
     }
+
+    // Set up click handler to unmute and set volume to 1% on body click
+    document.body.addEventListener('click', () => {
+      players.forEach(player => {
+        try {
+          if (player && typeof player.setVolume === 'function') {
+            player.unMute();
+            player.setVolume(1); // Set volume to 1% (range: 0 to 100)
+            player.playVideo();
+          }
+        } catch (e) {
+          console.warn("Failed to set player volume:", e);
+        }
+      });
+      // Fade out the banner
+      soundBanner.style.opacity = '0';
+      setTimeout(() => {
+        soundBanner.style.display = 'none';
+      }, 500);
+    });
   </script>
 </body>
 </html>

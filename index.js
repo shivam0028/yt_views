@@ -32,20 +32,8 @@ function extractVideoId(url) {
   return match ? match[1] : null;
 }
 
-/**
- * Generates the local HTML grid dashboard containing 50 embeds.
- */
 function generateGridHtml(url, count = 50) {
   const videoId = extractVideoId(url);
-  // Configure autoplay, mute, and loop parameters for the iframe embed
-  const embedUrl = videoId
-    ? `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=0&loop=1&playlist=${videoId}`
-    : url;
-
-  let iframes = '';
-  for (let i = 0; i < count; i++) {
-    iframes += `<iframe src="${embedUrl}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>\n`;
-  }
 
   return `
 <!DOCTYPE html>
@@ -65,6 +53,7 @@ function generateGridHtml(url, count = 50) {
       height: 100vh;
       overflow-x: hidden;
       overflow-y: auto;
+      position: relative;
     }
     .header {
       margin-bottom: 15px;
@@ -82,7 +71,7 @@ function generateGridHtml(url, count = 50) {
       gap: 12px;
       padding-bottom: 20px;
     }
-    iframe {
+    .grid div {
       width: 100%;
       aspect-ratio: 9 / 16;
       border: 2px solid #222;
@@ -90,25 +79,119 @@ function generateGridHtml(url, count = 50) {
       background-color: #000;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
       transition: all 0.3s ease;
+      overflow: hidden;
     }
-    iframe:hover {
+    .grid div:hover {
       border-color: #ff3b30;
       transform: scale(1.03);
       box-shadow: 0 6px 12px rgba(255, 59, 48, 0.2);
     }
-    /* Responsive adjustment for small screens */
+    .audio-banner {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: rgba(255, 59, 48, 0.9);
+      color: #fff;
+      padding: 12px 24px;
+      font-size: 14px;
+      font-weight: bold;
+      border-radius: 30px;
+      box-shadow: 0 4px 15px rgba(255, 59, 48, 0.4);
+      z-index: 1000;
+      cursor: pointer;
+      text-align: center;
+      transition: opacity 0.5s ease;
+      pointer-events: none;
+    }
+    .error-msg {
+      text-align: center;
+      font-size: 16px;
+      color: #aaa;
+      margin-top: 50px;
+      grid-column: span 10;
+    }
     @media (max-width: 1200px) {
       .grid {
         grid-template-columns: repeat(5, 1fr);
       }
     }
+    @media (max-width: 768px) {
+      .grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="header">Multi-Screen Monitor Grid (50 active elements)</div>
-  <div class="grid">
-    ${iframes}
-  </div>
+  <div id="sound-banner" class="audio-banner">Click anywhere on page to activate audio at 1% volume</div>
+  <div class="header" id="dashboard-title">Multi-Screen Monitor Grid</div>
+  <div class="grid" id="video-grid"></div>
+
+  <script src="https://www.youtube.com/iframe_api"></script>
+
+  <script>
+    const videoId = "${videoId || ''}";
+    const count = ${count};
+
+    const gridContainer = document.getElementById('video-grid');
+    const titleElement = document.getElementById('dashboard-title');
+    const soundBanner = document.getElementById('sound-banner');
+
+    titleElement.textContent = \`Multi-Screen Monitor Grid (\${count} active elements)\`;
+
+    const players = [];
+
+    function onYouTubeIframeAPIReady() {
+      if (!videoId) {
+        gridContainer.innerHTML = '<div class="error-msg">Please specify a video ID.</div>';
+        return;
+      }
+
+      for (let i = 0; i < count; i++) {
+        const playerDiv = document.createElement('div');
+        playerDiv.id = \`yt-player-\${i}\`;
+        gridContainer.appendChild(playerDiv);
+
+        const player = new YT.Player(\`yt-player-\${i}\`, {
+          height: '100%',
+          width: '100%',
+          videoId: videoId,
+          playerVars: {
+            autoplay: 1,
+            mute: 1,
+            loop: 1,
+            playlist: videoId,
+            controls: 0,
+            rel: 0,
+            modestbranding: 1
+          },
+          events: {
+            onReady: (event) => {
+              event.target.playVideo();
+            }
+          }
+        });
+        players.push(player);
+      }
+    }
+
+    document.body.addEventListener('click', () => {
+      players.forEach(player => {
+        try {
+          if (player && typeof player.setVolume === 'function') {
+            player.unMute();
+            player.setVolume(1);
+            player.playVideo();
+          }
+        } catch (e) {}
+      });
+      soundBanner.style.opacity = '0';
+      setTimeout(() => {
+        soundBanner.style.display = 'none';
+      }, 500);
+    });
+  </script>
 </body>
 </html>
   `;
