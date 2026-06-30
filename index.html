@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Multi-Screen Video Dashboard</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 15px;
+      background-color: #0b0b0b;
+      color: #eaeaea;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      box-sizing: border-box;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+    .header {
+      margin-bottom: 15px;
+      text-align: center;
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      color: #ff3b30;
+      text-transform: uppercase;
+      text-shadow: 0 0 10px rgba(255, 59, 48, 0.3);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 12px;
+      padding-bottom: 20px;
+    }
+    iframe {
+      width: 100%;
+      aspect-ratio: 9 / 16;
+      border: 2px solid #222;
+      border-radius: 6px;
+      background-color: #000;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+      transition: all 0.3s ease;
+    }
+    iframe:hover {
+      border-color: #ff3b30;
+      transform: scale(1.03);
+      box-shadow: 0 6px 12px rgba(255, 59, 48, 0.2);
+    }
+    .error-msg {
+      text-align: center;
+      font-size: 16px;
+      color: #aaa;
+      margin-top: 50px;
+    }
+    @media (max-width: 1200px) {
+      .grid {
+        grid-template-columns: repeat(5, 1fr);
+      }
+    }
+    @media (max-width: 768px) {
+      .grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header" id="dashboard-title">Multi-Screen Monitor Grid</div>
+  <div class="grid" id="video-grid"></div>
+
+  <script>
+    // Extract parameters from URL search query
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    // Default video ID: HZDnS7l0-dk
+    const videoId = urlParams.get('v') || 'HZDnS7l0-dk';
+    
+    // Default count of screens: 50
+    const count = parseInt(urlParams.get('c')) || 50;
+
+    const gridContainer = document.getElementById('video-grid');
+    const titleElement = document.getElementById('dashboard-title');
+
+    titleElement.textContent = `Multi-Screen Monitor Grid (${count} active elements)`;
+
+    if (videoId) {
+      // Set autoplay=1, mute=0 (audio on), loop=1, and playlist=videoId (required for looping)
+      const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=0&loop=1&playlist=${videoId}`;
+      
+      let html = '';
+      for (let i = 0; i < count; i++) {
+        html += `<iframe src="${embedUrl}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen frameborder="0"></iframe>\n`;
+      }
+      gridContainer.innerHTML = html;
+    } else {
+      gridContainer.innerHTML = '<div class="error-msg">Please specify a video ID parameter, e.g., ?v=VIDEO_ID</div>';
+    }
+  </script>
+</body>
+</html>
